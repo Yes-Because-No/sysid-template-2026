@@ -5,9 +5,6 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 
-import static edu.wpi.first.units.Units.Second;
-import static edu.wpi.first.units.Units.Volts;
-
 import java.util.ArrayList;
 import java.util.Map;
 
@@ -26,16 +23,16 @@ public class LinearSubsystem extends SubsystemBase {
     private TalonFXConfiguration config = new TalonFXConfiguration();
     
 
-    public LinearSubsystem(Map<Integer, Boolean> motorMap){
+    public LinearSubsystem(Map<Integer, InvertedValue> motorMap){
             config.Feedback.SensorToMechanismRatio = Constants.ROTATIONS_TO_LINEAR_UNITS;
             config.CurrentLimits.StatorCurrentLimitEnable = true;
             config.CurrentLimits.StatorCurrentLimit = Constants.CURRENT_LIMIT;
 
-            for (Map.Entry<Integer, Boolean> entry : motorMap.entrySet()){
+            for (Map.Entry<Integer, InvertedValue> entry : motorMap.entrySet()){
                 int CANID = entry.getKey().intValue();
-                boolean inversion = entry.getValue().booleanValue();
+                InvertedValue inversion = entry.getValue();
                 TalonFX motor = new TalonFX(CANID);
-                config.MotorOutput.Inverted = inversion? InvertedValue.Clockwise_Positive: InvertedValue.CounterClockwise_Positive;
+                config.MotorOutput.Inverted = inversion;
                 motor.getConfigurator().apply(config);
                 motors.add(motor);
             }
@@ -46,11 +43,13 @@ public class LinearSubsystem extends SubsystemBase {
         }
 
     public void setVoltage(double voltage){
-        motors.get(0).setControl(new VoltageOut(MathUtil.clamp(voltage, -7, 7)));
+        motors.get(0).setControl(new VoltageOut(MathUtil.clamp(voltage, -Constants.MAX_VOLTAGE, Constants.MAX_VOLTAGE)));
     }
 
      private SysIdRoutine sysIdRoutine = new SysIdRoutine(new SysIdRoutine.Config(
-            null,null,Second.of(8),
+            Constants.RAMP_RATE,
+            Constants.STEP_VOLTAGE,
+            Constants.TIME_OUT,
             (state)-> SignalLogger.writeString("state", state.toString())
         ),
         new SysIdRoutine.Mechanism(
